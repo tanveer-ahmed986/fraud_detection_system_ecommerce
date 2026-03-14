@@ -1,0 +1,120 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+*.pid
+*.db
+*.sqlite3
+
+# JavaScript/TypeScript/Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+dist/
+build/
+.cache/
+.parcel-cache/
+.next/
+out/
+.nuxt/
+.vite/
+.env.local
+.env.*.local
+
+# PHP
+vendor/
+composer.lock
+*.cache
+
+# Docker
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+.claude/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# ML Models
+backend/models/*.joblib
+backend/models/*.pkl
+!backend/models/.gitkeep
+
+# Data files
+*.csv
+*.parquet
+!backend/data/.gitkeep
+
+# Environment
+.env
+.env.test
+!.env.example
+
+# Alembic
+backend/alembic/versions/*.py
+!backend/alembic/versions/.gitkeep
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+.temp/
+temp/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Microsoft Office
+~$*.docx
+~$*.xlsx
+~$*.pptx
+*.tmp
+*.docx
+*.xlsx
+*.pptx
+
+# Screenshots
+*.png
+*.jpg
+*.jpeg
+*.gif
+!docs/*.png
+!docs/*.jpg

@@ -1,3 +1,49 @@
+# Project: Fraud Detection AI System for E-commerce
+
+## What This Is
+A **portfolio-grade, fully functional** fraud detection system for ecommerce.
+Detects fraudulent transactions in real-time using ML, with explainability,
+audit logging, a visual dashboard, and WooCommerce/Stripe plugin integration.
+
+## Key Artifacts
+- **Constitution**: `.specify/memory/constitution.md` (v1.0.0 — 10 principles)
+- **Feature Spec**: `specs/001-fraud-detection-system/spec.md` (5 user stories, 15 FRs)
+- **Feature Branch**: `001-fraud-detection-system`
+- **Old technical spec** (superseded): `specs/spec.md`
+
+## 5 User Stories (Priority Order)
+1. **P1 — Real-time Fraud Prediction**: Submit transaction → get verdict + confidence + top-3 feature explanations (≤200ms p95)
+2. **P2 — Model Training/Retraining**: Train on labeled data, version models, rollback support, metric gates (recall ≥0.90, FPR ≤0.05)
+3. **P3 — Analytics Dashboard**: Visual UI showing fraud rate, model metrics, prediction history, transaction drill-down
+4. **P4 — Audit Logging**: Every prediction/training event logged with full context for compliance (GDPR, PCI-DSS)
+5. **P5 — WooCommerce Plugin**: PHP plugin sends checkout transactions to API, flags fraud, notifies merchant
+
+## Core Constraints (from Constitution)
+- Recall ≥90%, False Positive Rate ≤5%, Precision ≥85%
+- Every prediction MUST include top-3 feature contributions (explainability)
+- p95 latency ≤200ms, hard cap 500ms
+- Model drift monitoring: weekly eval, alert if recall <0.85 or FPR >0.07
+- Fallback: service down → allow <$50, queue rest for manual review
+- No raw PII in logs; no card numbers/CVV ever stored
+- API key auth on `/retrain`; rate limiting on `/predict` (100 req/s)
+- Model integrity check (SHA-256) before loading
+
+## Key Entities
+Transaction | Prediction | Model | AuditEntry | MerchantConfig
+
+## Deployment Target
+**WooCommerce plugin** — the primary deployment method. The ML API backend
+runs separately (local/cloud), and the PHP plugin connects WooCommerce to it.
+
+## Portfolio Goal
+A reviewer should go from `git clone` to seeing a live prediction in <5 minutes.
+The dashboard is the visual centerpiece for non-technical reviewers.
+
+## Current Phase
+Specification complete. Next: `/sp.plan` for architecture decisions.
+
+---
+
 # Claude Code Rules
 
 This file is generated during init for the selected agent.
