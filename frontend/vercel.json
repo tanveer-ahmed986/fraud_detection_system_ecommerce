@@ -1,13 +1,8 @@
 {
-  "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
-  "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://fraud-detection-api-qnkb.onrender.com/api/:path*"
+      "source": "/api/v1/:path*",
+      "destination": "https://fraud-detection-api-qnkb.onrender.com/api/v1/:path*"
     }
   ]
 }
