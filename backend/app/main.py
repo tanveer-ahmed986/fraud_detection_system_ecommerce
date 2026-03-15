@@ -8,7 +8,7 @@ from app.config import settings
 from app.dependencies import engine
 from app.models.db import Base
 from app.middleware.rate_limiter import RateLimiterMiddleware
-from app.routers import health, predict, retrain, audit, dashboard, models, batch
+from app.routers import health, predict, retrain, audit, dashboard, models, batch, creditcard_batch
 
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger(__name__)
@@ -85,3 +85,4 @@ app.include_router(audit.router)
 app.include_router(dashboard.router)
 app.include_router(models.router)
 app.include_router(batch.router)
+app.include_router(creditcard_batch.router)

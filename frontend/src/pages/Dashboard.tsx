@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getSummary, getTimeseries, getPredictions, DashboardSummary, TimeseriesPoint, PredictionItem } from '../api/client'
+import { getSummary, getTimeseries, getPredictions, getHealth, DashboardSummary, TimeseriesPoint, PredictionItem } from '../api/client'
 import MetricsCard from '../components/MetricsCard'
 import FraudRateChart from '../components/FraudRateChart'
 import PredictionTable from '../components/PredictionTable'
@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [allPredictions, setAllPredictions] = useState<PredictionItem[]>([])
   const [filteredPredictions, setFilteredPredictions] = useState<PredictionItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [systemReady, setSystemReady] = useState(true) // Model loaded status
 
   // Filter states
   const [dateRange, setDateRange] = useState(30) // days
@@ -40,6 +41,14 @@ export default function Dashboard() {
 
   const fetchData = useCallback(async () => {
     try {
+      // Check system health first
+      try {
+        const healthResponse = await getHealth()
+        setSystemReady(healthResponse.data.model_loaded === true)
+      } catch {
+        setSystemReady(false)
+      }
+
       const [s, t, p] = await Promise.all([
         getSummary(),
         getTimeseries(dateRange),
@@ -162,6 +171,83 @@ export default function Dashboard() {
           </span>
         </div>
       </div>
+
+      {/* System Warming Up Banner (critical - model not loaded) */}
+      {!systemReady && (
+        <div style={{
+          background: 'linear-gradient(135deg, #f39c12 0%, #e74c3c 100%)',
+          color: '#fff',
+          padding: '16px 20px',
+          borderRadius: '8px',
+          border: '2px solid #e67e22',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          boxShadow: '0 4px 6px rgba(243, 156, 18, 0.3)',
+          animation: 'pulse 2s ease-in-out infinite',
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            border: '3px solid rgba(255, 255, 255, 0.3)',
+            borderTop: '3px solid #fff',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '4px' }}>
+              🚀 System Warming Up...
+            </div>
+            <div style={{ fontSize: '13px', opacity: 0.9, lineHeight: '1.5' }}>
+              The fraud detection system is initializing (first-time startup takes 1-2 minutes). Your first transaction prediction will be ready shortly. All subsequent predictions will be instant (&lt;200ms).
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* First-time User Info Banner (helpful context for new users) */}
+      {systemReady && summary.total_predictions < 5 && (
+        <div style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: '#fff',
+          padding: '16px 20px',
+          borderRadius: '8px',
+          border: '2px solid #5a67d8',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          boxShadow: '0 4px 6px rgba(102, 126, 234, 0.2)',
+        }}>
+          <span style={{ fontSize: '24px' }}>⚡</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '4px' }}>
+              System Ready - Lightning Fast Predictions
+            </div>
+            <div style={{ fontSize: '13px', opacity: 0.9, lineHeight: '1.5' }}>
+              Your fraud detection system is fully initialized and ready. All transactions will be analyzed in under 200ms with AI-powered risk scoring and explainable fraud indicators.
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const banner = document.querySelector('[data-banner="first-time"]') as HTMLElement
+              if (banner) banner.style.display = 'none'
+            }}
+            style={{
+              background: 'rgba(255, 255, 255, 0.2)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              color: '#fff',
+              padding: '6px 12px',
+              borderRadius: '4px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+            data-banner="first-time"
+          >
+            Got it ✓
+          </button>
+        </div>
+      )}
 
       {/* Metrics Cards */}
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>

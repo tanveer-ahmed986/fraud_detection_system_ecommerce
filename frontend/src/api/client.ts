@@ -3,6 +3,8 @@ import axios from 'axios'
 // Use relative URL - Vercel will proxy to backend
 const api = axios.create({ baseURL: '/api/v1' })
 
+export const getHealth = () => api.get('/health')
+
 export interface DashboardSummary {
   total_predictions: number
   fraud_count: number
@@ -73,7 +75,6 @@ export const getPredictions = (page = 1, pageSize = 20) =>
   api.get<{ total: number; predictions: PredictionItem[] }>(`/dashboard/predictions?page=${page}&page_size=${pageSize}`)
 export const getTransaction = (id: string) => api.get<TransactionDetail>(`/dashboard/transaction/${id}`)
 export const getModels = () => api.get<ModelInfo[]>('/models')
-export const getHealth = () => api.get('/health')
 
 // Predict API
 export interface PredictRequest {
