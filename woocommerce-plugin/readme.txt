@@ -204,7 +204,40 @@ docker compose up -d
 
 = Do I need to install anything else? =
 
-Yes, you need the fraud detection API backend running. You can self-host using Docker or deploy to cloud services like Render or Railway. Full instructions at: https://github.com/tanveer-ahmed986/fraud_detection_system_ecommerce
+Yes, you need the fraud detection API backend running. The plugin connects to this API to analyze transactions.
+
+**3 Options:**
+1. **Self-Host (Free)** - Run on your server using Docker (requires technical knowledge)
+2. **Cloud Deploy (Paid)** - Deploy to Render, Railway, or DigitalOcean ($5-25/month)
+3. **Local Testing** - Run locally for development (not for production)
+
+Full setup instructions: https://github.com/tanveer-ahmed986/fraud_detection_system_ecommerce
+
+= How much does the backend cost? =
+
+The **WooCommerce plugin is 100% FREE**. Backend costs depend on your choice:
+
+**Self-Hosted:**
+- Plugin: FREE
+- Server: $10-20/month (VPS hosting)
+- Total: $10-20/month
+
+**Cloud Deployment:**
+- Plugin: FREE
+- Render.com: $7-25/month
+- Railway.app: $5-15/month
+- Total: $5-25/month
+
+**No hidden fees, no per-transaction charges!**
+
+= Can I use it without technical knowledge? =
+
+The plugin is easy to use, but setting up the backend requires some technical knowledge (Docker, cloud deployment, etc.).
+
+If you're not technical:
+- Hire a developer for 1-hour setup ($50-100)
+- Use managed cloud platform with 1-click deploy
+- Follow our detailed step-by-step guides
 
 = How accurate is the fraud detection? =
 
