@@ -3,7 +3,7 @@ Contributors: tanveer986
 Donate link: https://github.com/tanveer-ahmed986/fraud_detection_system_ecommerce
 Tags: fraud, fraud-detection, woocommerce, security, machine-learning, ai, fraud-prevention, chargebacks, ecommerce, payment-security, checkout, risk-management
 Requires at least: 5.8
-Tested up to: 6.4
+Tested up to: 6.9
 Requires PHP: 7.4
 Stable tag: 2.2.1
 License: MIT

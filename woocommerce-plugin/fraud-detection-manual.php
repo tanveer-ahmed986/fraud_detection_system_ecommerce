@@ -71,12 +71,38 @@ class WC_AI_Fraud_Detection_Manual {
     }
 
     public function register_settings() {
-        register_setting('wc_fraud_detection', 'wc_fraud_api_endpoint');
-        register_setting('wc_fraud_detection', 'wc_fraud_api_key');
-        register_setting('wc_fraud_detection', 'wc_fraud_threshold');
-        register_setting('wc_fraud_detection', 'wc_fraud_auto_check');
-        register_setting('wc_fraud_detection', 'wc_fraud_auto_hold');
-        register_setting('wc_fraud_detection', 'wc_fraud_email_alerts');
+        register_setting('wc_fraud_detection', 'wc_fraud_api_endpoint', array(
+            'sanitize_callback' => 'esc_url_raw'
+        ));
+        register_setting('wc_fraud_detection', 'wc_fraud_api_key', array(
+            'sanitize_callback' => 'sanitize_text_field'
+        ));
+        register_setting('wc_fraud_detection', 'wc_fraud_threshold', array(
+            'sanitize_callback' => array($this, 'sanitize_threshold')
+        ));
+        register_setting('wc_fraud_detection', 'wc_fraud_auto_check', array(
+            'sanitize_callback' => array($this, 'sanitize_checkbox')
+        ));
+        register_setting('wc_fraud_detection', 'wc_fraud_auto_hold', array(
+            'sanitize_callback' => array($this, 'sanitize_checkbox')
+        ));
+        register_setting('wc_fraud_detection', 'wc_fraud_email_alerts', array(
+            'sanitize_callback' => array($this, 'sanitize_checkbox')
+        ));
+    }
+
+    public function sanitize_threshold($value) {
+        $value = floatval($value);
+        if ($value < 0) {
+            $value = 0;
+        } elseif ($value > 1) {
+            $value = 1;
+        }
+        return $value;
+    }
+
+    public function sanitize_checkbox($value) {
+        return $value === '1' ? '1' : '0';
     }
 
     public function render_bulk_check_page() {
