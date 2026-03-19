@@ -78,6 +78,7 @@ backend/models/*.pkl
 
 # Data files
 *.csv
+!backend/data/demo_transactions.csv
 *.parquet
 !backend/data/.gitkeep
 
