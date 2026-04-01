@@ -208,7 +208,7 @@ export default function TestTransaction() {
                 marginTop: '8px',
               }}
             >
-              {loading ? 'Analyzing...' : 'Check for Fraud'}
+              {loading ? 'Analyzing Transaction...' : 'Analyze Risk'}
             </button>
           </form>
         </div>
@@ -229,7 +229,7 @@ export default function TestTransaction() {
 
           {result && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Verdict Card */}
+              {/* Risk Assessment Card */}
               <div style={{
                 background: result.label === 'fraud' ? '#ff7675' : '#00b894',
                 color: '#fff',
@@ -237,12 +237,26 @@ export default function TestTransaction() {
                 borderRadius: '8px',
                 textAlign: 'center',
               }}>
-                <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Verdict</div>
-                <div style={{ fontSize: '32px', fontWeight: 700, marginBottom: '8px' }}>
-                  {result.label === 'fraud' ? '⚠️ FRAUD DETECTED' : '✅ LEGITIMATE'}
+                <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>
+                  Risk Assessment
                 </div>
-                <div style={{ fontSize: '16px', opacity: 0.95 }}>
-                  Confidence: {(result.confidence * 100).toFixed(1)}%
+                <div style={{ fontSize: '32px', fontWeight: 700, marginBottom: '8px' }}>
+                  {result.label === 'fraud' ? '⚠️ HIGH RISK' : '✅ LOW RISK'}
+                </div>
+                <div style={{ fontSize: '16px', opacity: 0.95, marginBottom: '8px' }}>
+                  Risk Score: {(result.confidence * 100).toFixed(1)}%
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  opacity: 0.9,
+                  borderTop: '1px solid rgba(255,255,255,0.3)',
+                  paddingTop: '12px',
+                  marginTop: '8px'
+                }}>
+                  {result.label === 'fraud'
+                    ? 'Suspicious patterns detected - Review recommended'
+                    : 'Transaction appears safe to process'
+                  }
                 </div>
               </div>
 
@@ -254,25 +268,28 @@ export default function TestTransaction() {
                 border: '1px solid #dfe6e9',
               }}>
                 <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px', color: '#636e72' }}>
-                  Transaction Info
+                  Performance
                 </h4>
                 <div style={{ fontSize: '13px', color: '#2d3436', lineHeight: 1.8 }}>
-                  <div><strong>ID:</strong> {result.transaction_id}</div>
-                  <div><strong>Latency:</strong> {result.latency_ms.toFixed(0)}ms</div>
-                  <div><strong>Threshold:</strong> {(result.threshold_used * 100).toFixed(0)}%</div>
+                  <div><strong>API Latency:</strong> {result.latency_ms.toFixed(1)}ms</div>
+                  <div><strong>Model:</strong> XGBoost v2.0</div>
+                  <div><strong>Result:</strong> {result.label.toUpperCase()}</div>
                 </div>
               </div>
 
-              {/* SHAP Explanations */}
+              {/* Risk Factors Analysis */}
               <div style={{
                 background: '#fff',
                 padding: '20px',
                 borderRadius: '8px',
                 border: '1px solid #dfe6e9',
               }}>
-                <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '16px', color: '#636e72' }}>
-                  Top Risk Factors (SHAP)
+                <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px', color: '#636e72' }}>
+                  Risk Factor Analysis
                 </h4>
+                <p style={{ fontSize: '13px', color: '#636e72', marginBottom: '16px', lineHeight: 1.5 }}>
+                  These factors contributed most to the risk assessment:
+                </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {result.top_features.map((f, i) => (
                     <SingleFeatureBar
@@ -285,30 +302,59 @@ export default function TestTransaction() {
                 </div>
               </div>
 
-              {/* What This Means */}
+              {/* Recommended Actions */}
               <div style={{
-                background: '#f8f9fa',
+                background: result.label === 'fraud' ? '#fff3cd' : '#d4edda',
                 padding: '16px',
                 borderRadius: '8px',
-                border: '1px solid #e9ecef',
+                border: result.label === 'fraud' ? '1px solid #ffc107' : '1px solid #28a745',
                 fontSize: '13px',
                 lineHeight: 1.6,
-                color: '#495057',
+                color: '#212529',
               }}>
-                <strong>💡 What this means:</strong><br />
-                {result.label === 'fraud' ? (
-                  <>
-                    The model detected suspicious patterns in this transaction.
-                    The top risk factors above show which features contributed most to the fraud score.
-                    <strong> Recommend manual review or blocking this transaction.</strong>
-                  </>
-                ) : (
-                  <>
-                    This transaction appears legitimate based on the model's analysis.
-                    The features above had minimal contribution to fraud risk.
-                    <strong> Safe to proceed with this order.</strong>
-                  </>
-                )}
+                <strong style={{ fontSize: '14px' }}>
+                  {result.label === 'fraud' ? '⚠️ Recommended Action' : '✓ Recommended Action'}
+                </strong>
+                <div style={{ marginTop: '8px' }}>
+                  {result.label === 'fraud' ? (
+                    <>
+                      <strong>Hold for Manual Review</strong>
+                      <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                        <li>Contact customer to verify identity</li>
+                        <li>Confirm billing/shipping address matches</li>
+                        <li>Request additional payment verification (CVV, 3D Secure)</li>
+                        <li>Check previous order history if available</li>
+                      </ul>
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '8px',
+                        background: 'rgba(255,193,7,0.1)',
+                        borderRadius: '4px',
+                        fontSize: '12px'
+                      }}>
+                        <strong>Note:</strong> High-risk doesn't mean confirmed fraud. Manual review helps reduce false positives while protecting against actual fraud.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <strong>Safe to Process</strong>
+                      <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                        <li>Transaction shows low-risk indicators</li>
+                        <li>Standard payment processing recommended</li>
+                        <li>Continue with normal fulfillment</li>
+                      </ul>
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '8px',
+                        background: 'rgba(40,167,69,0.1)',
+                        borderRadius: '4px',
+                        fontSize: '12px'
+                      }}>
+                        <strong>Tip:</strong> Continue monitoring for unusual patterns in future transactions from this customer.
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -324,7 +370,10 @@ export default function TestTransaction() {
             }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
               <div style={{ fontSize: '15px' }}>
-                Fill out the form and click <strong>"Check for Fraud"</strong> to see results
+                Fill out the form and click <strong>"Analyze Risk"</strong> to see results
+              </div>
+              <div style={{ fontSize: '13px', marginTop: '12px', color: '#95a5a6' }}>
+                Test real-time fraud detection with explainable AI
               </div>
             </div>
           )}
@@ -384,11 +433,12 @@ export default function TestTransaction() {
           <button
             onClick={() => setFormData({
               ...formData,
-              amount: 5000,
+              amount: 50000,
+              email_domain: 'tempmail.com',
               is_new_user: true,
               billing_shipping_match: false,
               items_count: 20,
-              payment_method: 'crypto',
+              payment_method: 'credit_card',
               hour_of_day: 3,
             })}
             style={{
@@ -400,7 +450,7 @@ export default function TestTransaction() {
               fontSize: '13px',
             }}
           >
-            🔴 High Risk ($5K, 3AM)
+            🔴 Suspicious ($50K New User)
           </button>
         </div>
       </div>

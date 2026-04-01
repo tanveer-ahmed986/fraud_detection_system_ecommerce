@@ -1,7 +1,14 @@
 import axios from 'axios'
 
-// Use relative URL - Vercel will proxy to backend
-const api = axios.create({ baseURL: '/api/v1' })
+// Use Railway API URL from environment variable
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
 
 export const getHealth = () => api.get('/health')
 
@@ -76,10 +83,11 @@ export const getPredictions = (page = 1, pageSize = 20) =>
 export const getTransaction = (id: string) => api.get<TransactionDetail>(`/dashboard/transaction/${id}`)
 export const getModels = () => api.get<ModelInfo[]>('/models')
 
-// Predict API
+// Predict API - Railway compatible
 export interface PredictRequest {
   merchant_id: string
   amount: number
+  currency?: string
   payment_method: string
   user_id_hash: string
   ip_hash: string
@@ -93,16 +101,20 @@ export interface PredictRequest {
 }
 
 export interface PredictResponse {
-  transaction_id: string
   label: string
   confidence: number
-  threshold_used: number
   top_features: { feature: string; contribution: number }[]
   latency_ms: number
-  fallback_applied: boolean
+  // Add compatibility fields for TestTransaction page
+  transaction_id?: string
+  threshold_used?: number
+  fallback_applied?: boolean
 }
 
 export const predictTransaction = (data: PredictRequest) =>
-  api.post<PredictResponse>('/predict', data)
+  api.post<PredictResponse>('/predict', {
+    ...data,
+    currency: data.currency || 'USD'
+  })
 
 export default api
