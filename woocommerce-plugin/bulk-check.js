@@ -5,10 +5,10 @@ jQuery(document).ready(function($) {
     // Download template
     $('#download-template').on('click', function(e) {
         e.preventDefault();
-        var csv = 'order_id,amount,payment_method,customer_email,is_new_customer,billing_city,items_count\n';
-        csv += '12345,99.99,credit_card,customer@example.com,yes,New York,2\n';
-        csv += '12346,149.50,paypal,john@test.com,no,Los Angeles,1\n';
-        csv += '12347,250.00,credit_card,jane@example.com,yes,Chicago,5';
+        var csv = 'merchant_id,amount,currency,payment_method,user_id_hash,ip_hash,email_domain,is_new_user,device_type,billing_shipping_match,hour_of_day,day_of_week,items_count\n';
+        csv += 'MERCH001,99.99,USD,credit_card,user123,192.168.1.1,gmail.com,false,desktop,true,14,2,2\n';
+        csv += 'MERCH001,5000.00,USD,credit_card,user456,192.168.1.2,tempmail.com,true,mobile,false,3,1,1\n';
+        csv += 'MERCH001,149.50,USD,paypal,user789,192.168.1.3,yahoo.com,false,desktop,true,10,3,1';
 
         var blob = new Blob([csv], { type: 'text/csv' });
         var url = URL.createObjectURL(blob);

@@ -626,6 +626,12 @@ class TFShield_Fraud_Detection {
 
             // Call API
             $url = rtrim($api_endpoint, '/') . '/api/v1/predict';
+
+            // Debug logging
+            error_log('=== CSV BULK CHECK DEBUG ===');
+            error_log('CSV Row: ' . json_encode($row));
+            error_log('Sending to API: ' . json_encode($transaction_data));
+
             $response = wp_remote_post($url, array(
                 'headers' => array('Content-Type' => 'application/json'),
                 'body' => json_encode($transaction_data),
