@@ -120,6 +120,12 @@ export default function BulkCheck() {
 
         if (response.ok) {
           const prediction = await response.json()
+
+          // Debug logging
+          console.log('Transaction:', transaction)
+          console.log('API Response:', prediction)
+          console.log('Label received:', prediction.label)
+
           predictions.push({
             transaction_id: `TXN_${i}`,
             merchant_id: transaction.merchant_id,
@@ -130,8 +136,13 @@ export default function BulkCheck() {
             model_version: '2.0.0'
           })
 
-          if (prediction.label === 'HIGH RISK') fraudCount++
-          else legitCount++
+          if (prediction.label === 'HIGH RISK') {
+            console.log('Counted as HIGH RISK')
+            fraudCount++
+          } else {
+            console.log('Counted as LOW RISK')
+            legitCount++
+          }
         }
       }
 
