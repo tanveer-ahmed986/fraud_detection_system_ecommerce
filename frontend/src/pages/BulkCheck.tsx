@@ -71,21 +71,79 @@ export default function BulkCheck() {
     setError(null)
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
+      // Read CSV file
+      const text = await file.text()
+      const lines = text.split('\n').filter(l => l.trim())
 
-      const response = await fetch('http://localhost:8000/api/v1/predict/batch', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Upload failed')
+      if (lines.length < 2) {
+        throw new Error('CSV file is empty or invalid')
       }
 
-      const data: BatchResult = await response.json()
-      setResult(data)
+      // Parse CSV (skip header)
+      const predictions: BatchPrediction[] = []
+      let fraudCount = 0
+      let legitCount = 0
+
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+
+      // Process each transaction
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim()
+        if (!line) continue
+
+        const fields = line.split(',')
+        if (fields.length < 12) continue
+
+        // Parse CSV row
+        const transaction = {
+          merchant_id: fields[0] || 'MERCHANT',
+          amount: parseFloat(fields[1]) || 0,
+          currency: fields[2] || 'USD',
+          payment_method: fields[3] || 'credit_card',
+          user_id_hash: fields[4] || 'user_' + i,
+          ip_hash: fields[5] || '192.168.1.1',
+          email_domain: fields[6] || 'example.com',
+          is_new_user: fields[7]?.toLowerCase() === 'true',
+          device_type: fields[8] || 'desktop',
+          billing_shipping_match: fields[9]?.toLowerCase() !== 'false',
+          hour_of_day: parseInt(fields[10]) || 12,
+          day_of_week: parseInt(fields[11]) || 1,
+          items_count: parseInt(fields[12]) || 1
+        }
+
+        // Call prediction API
+        const response = await fetch(`${API_URL}/predict`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(transaction)
+        })
+
+        if (response.ok) {
+          const prediction = await response.json()
+          predictions.push({
+            transaction_id: `TXN_${i}`,
+            merchant_id: transaction.merchant_id,
+            amount: transaction.amount,
+            confidence: prediction.confidence,
+            label: prediction.label,
+            top_features: prediction.top_features,
+            model_version: '2.0.0'
+          })
+
+          if (prediction.label === 'HIGH RISK') fraudCount++
+          else legitCount++
+        }
+      }
+
+      setResult({
+        success: true,
+        total_transactions: predictions.length,
+        fraud_detected: fraudCount,
+        legitimate: legitCount,
+        fraud_rate: predictions.length > 0 ? (fraudCount / predictions.length) * 100 : 0,
+        model_version: '2.0.0',
+        predictions
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -110,11 +168,12 @@ export default function BulkCheck() {
 
     const rows = result.predictions.map((p) => {
       const features = p.top_features || []
+      const riskLabel = p.label // Already 'HIGH RISK' or 'LOW RISK' from API
       return [
         p.transaction_id,
         p.merchant_id,
         p.amount.toFixed(2),
-        p.label,
+        riskLabel,
         (p.confidence * 100).toFixed(1),
         p.model_version,
         features[0] ? `${features[0].feature}: ${features[0].contribution.toFixed(4)}` : '',
@@ -136,10 +195,10 @@ export default function BulkCheck() {
   }
 
   const downloadTemplate = () => {
-    const template = `merchant_id,amount,payment_method,user_id_hash,ip_hash,email_domain,is_new_user,device_type,billing_shipping_match,hour_of_day,day_of_week,items_count
-merchant_001,250.50,credit_card,user123hash,192.168.1.1hash,gmail.com,false,desktop,true,14,3,5
-merchant_002,5000.00,paypal,user456hash,10.0.0.1hash,yahoo.com,true,mobile,false,3,0,1
-merchant_003,45.99,debit_card,user789hash,172.16.0.1hash,outlook.com,false,tablet,true,10,5,3`
+    const template = `merchant_id,amount,currency,payment_method,user_id_hash,ip_hash,email_domain,is_new_user,device_type,billing_shipping_match,hour_of_day,day_of_week,items_count
+merchant_001,250.50,USD,credit_card,user123hash,192.168.1.1hash,gmail.com,false,desktop,true,14,3,5
+merchant_002,5000.00,USD,paypal,user456hash,10.0.0.1hash,yahoo.com,true,mobile,false,3,0,1
+merchant_003,45.99,USD,debit_card,user789hash,172.16.0.1hash,outlook.com,false,tablet,true,10,5,3`
 
     const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
@@ -382,7 +441,7 @@ merchant_003,45.99,debit_card,user789hash,172.16.0.1hash,outlook.com,false,table
                   }}
                 >
                   <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>
-                    Fraud Detected
+                    High Risk
                   </p>
                   <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#dc2626' }}>
                     {result.fraud_detected}
@@ -398,7 +457,7 @@ merchant_003,45.99,debit_card,user789hash,172.16.0.1hash,outlook.com,false,table
                   }}
                 >
                   <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>
-                    Legitimate
+                    Low Risk
                   </p>
                   <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#10b981' }}>
                     {result.legitimate}
@@ -543,7 +602,7 @@ merchant_003,45.99,debit_card,user789hash,172.16.0.1hash,outlook.com,false,table
                                 color: pred.label.toLowerCase() === 'fraud' ? '#dc2626' : '#10b981',
                               }}
                             >
-                              {pred.label.toUpperCase()}
+                              {pred.label.toLowerCase() === 'fraud' ? 'HIGH RISK' : 'LOW RISK'}
                             </span>
                           </td>
                           <td style={{ padding: '12px 16px', fontSize: '14px' }}>
