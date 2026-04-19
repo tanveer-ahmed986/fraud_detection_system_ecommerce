@@ -393,33 +393,55 @@ def get_top_features(features: np.ndarray) -> List[dict]:
     # Calculate feature contributions for THIS transaction
     # Simple approach: multiply importance by scaled feature value
     # This gives transaction-specific contributions (different for each transaction)
-    contributions = []
 
-    for idx in range(len(importances)):
-        feature_value = features[idx]  # features is already 1D array
+    try:
+        logger.info(f"🔧 NEW CODE RUNNING - features shape: {features.shape}, len: {len(features)}")
+        contributions = []
 
-        # Scale feature value to reasonable range for display
-        # Use tanh to bound to [-1, 1] range
-        scaled_value = np.tanh(feature_value / 10.0)  # divide by 10 to avoid saturation
+        for idx in range(len(importances)):
+            feature_value = features[idx]  # features is already 1D array
 
-        # Contribution = importance * scaled value
-        contribution = float(importances[idx] * scaled_value)
-        contributions.append((idx, contribution))
+            # Scale feature value to reasonable range for display
+            # Use tanh to bound to [-1, 1] range
+            scaled_value = np.tanh(feature_value / 10.0)  # divide by 10 to avoid saturation
 
-    # Get top 3 by absolute contribution
-    top_indices_contrib = sorted(contributions, key=lambda x: abs(x[1]), reverse=True)[:3]
+            # Contribution = importance * scaled value
+            contribution = float(importances[idx] * scaled_value)
+            contributions.append((idx, contribution))
 
-    top_features = []
-    for idx, contrib in top_indices_contrib:
-        feature_name = feature_names[idx] if feature_names else f"feature_{idx}"
-        display_name = feature_display_names.get(feature_name, feature_name)
-        top_features.append({
-            "feature": display_name,
-            "contribution": float(contrib)
-        })
+        # Get top 3 by absolute contribution
+        top_indices_contrib = sorted(contributions, key=lambda x: abs(x[1]), reverse=True)[:3]
 
-    logger.info(f"Top features for transaction: {top_features}")
-    return top_features
+        top_features = []
+        for idx, contrib in top_indices_contrib:
+            feature_name = feature_names[idx] if feature_names else f"feature_{idx}"
+            display_name = feature_display_names.get(feature_name, feature_name)
+            top_features.append({
+                "feature": display_name,
+                "contribution": float(contrib)
+            })
+
+        logger.info(f"✅ Transaction-specific features: {top_features}")
+        return top_features
+
+    except Exception as e:
+        logger.error(f"❌ Error calculating transaction-specific features: {e}")
+        logger.error(f"Features type: {type(features)}, shape: {getattr(features, 'shape', 'no shape')}")
+        import traceback
+        logger.error(traceback.format_exc())
+
+        # Fallback to global importance
+        logger.warning("⚠️ Falling back to global feature importance")
+        top_indices = np.argsort(importances)[-3:][::-1]
+        top_features = []
+        for idx in top_indices:
+            feature_name = feature_names[idx] if feature_names else f"feature_{idx}"
+            display_name = feature_display_names.get(feature_name, feature_name)
+            top_features.append({
+                "feature": display_name,
+                "contribution": float(importances[idx])
+            })
+        return top_features
 
 if __name__ == "__main__":
     import uvicorn
