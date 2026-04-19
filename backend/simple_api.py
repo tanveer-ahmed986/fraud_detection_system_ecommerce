@@ -68,10 +68,14 @@ class Transaction(BaseModel):
     day_of_week: int
     items_count: int
 
+class FeatureContribution(BaseModel):
+    feature: str
+    contribution: float
+
 class PredictionResponse(BaseModel):
     label: str
     confidence: float
-    top_features: List[Dict[str, float]]
+    top_features: List[FeatureContribution]
     latency_ms: float
 
 # Health check endpoint
@@ -140,14 +144,14 @@ async def predict(transaction: Transaction):
         v_features.append(transaction.amount / transaction.items_count if transaction.items_count > 0 else 0)
         v_features.append(1.0 if transaction.is_new_user and transaction.amount > 200 else -1.0)
         v_features.append(1.0 if not transaction.billing_shipping_match and transaction.is_new_user else -1.0)
-        v_features.append(np.random.randn() * 0.1)  # Small random noise
-        v_features.append(np.random.randn() * 0.1)
-        v_features.append(np.random.randn() * 0.1)
-        v_features.append(np.random.randn() * 0.1)
-        v_features.append(np.random.randn() * 0.1)
+        v_features.append(0.0)
+        v_features.append(0.0)
+        v_features.append(0.0)
+        v_features.append(0.0)
+        v_features.append(0.0)
 
         # Add Time and Amount (last 2 features)
-        time_feature = float(transaction.hour_of_day * 3600 + np.random.randint(0, 3600))
+        time_feature = float(transaction.hour_of_day * 3600)
         amount_feature = float(transaction.amount)
 
         # Combine all features into single list
@@ -174,48 +178,87 @@ async def predict(transaction: Transaction):
         # Get confidence
         fraud_prob = probability[1] if len(probability) > 1 else probability[0]
 
-        # Get feature importance
+        # Get feature importance using SHAP explainer for this specific transaction
         top_features = []
         try:
-            if hasattr(model, 'feature_importances_'):
-                importances = model.feature_importances_
+            # Feature names for credit card model
+            feature_names = [f"V{i}" for i in range(1, 29)] + ["Time", "Amount"]
 
-                # Feature names for credit card model
-                feature_names = [f"V{i}" for i in range(1, 29)] + ["Time", "Amount"]
+            # Map to user-friendly names for display
+            friendly_names = {
+                "V1": "Payment Method",
+                "V2": "New Customer",
+                "V3": "Address Mismatch",
+                "V4": "Transaction Hour",
+                "V5": "Transaction Amount",
+                "V6": "Amount Squared",
+                "V7": "Amount Pattern",
+                "V8": "High Amount Flag",
+                "V9": "Very High Amount",
+                "V10": "Items Count",
+                "V11": "Customer Behavior",
+                "V12": "IP Pattern",
+                "V13": "Merchant Pattern",
+                "V14": "Email Domain",
+                "V15": "Device Type",
+                "V16": "Day of Week",
+                "V17": "Unusual Hour",
+                "V18": "Weekend Flag",
+                "V19": "Domain Length",
+                "V20": "Email Provider",
+                "V21": "Avg Item Price",
+                "V22": "New High Spender",
+                "V23": "New + Addr Mismatch",
+                "Amount": "Transaction Amount",
+                "Time": "Transaction Time"
+            }
 
-                # Map to user-friendly names for display
-                friendly_names = {
-                    "V1": "Payment Method",
-                    "V2": "New Customer",
-                    "V3": "Address Mismatch",
-                    "V4": "Transaction Hour",
-                    "V5": "Transaction Amount",
-                    "V7": "Amount Pattern",
-                    "V10": "Items Count",
-                    "V11": "Customer Behavior",
-                    "V13": "Merchant Pattern",
-                    "V14": "Email Domain",
-                    "V16": "Day of Week",
-                    "V17": "Unusual Hour",
-                    "Amount": "Transaction Amount",
-                    "Time": "Transaction Time"
-                }
+            # Use SHAP explainer if available for transaction-specific contributions
+            if explainer is not None:
+                shap_values = explainer.shap_values(features)
 
-                # Get top 3 most important features
-                top_indices = np.argsort(importances)[-3:][::-1]
+                # For binary classification, shap_values might be a list [class0, class1]
+                if isinstance(shap_values, list):
+                    shap_values = shap_values[1]  # Use positive class (fraud)
+
+                # Get SHAP values for this transaction
+                transaction_shap = shap_values[0] if len(shap_values.shape) > 1 else shap_values
+
+                # Get top 3 by absolute contribution
+                top_indices = np.argsort(np.abs(transaction_shap))[-3:][::-1]
                 top_features = [
                     {
                         "feature": friendly_names.get(feature_names[i], feature_names[i]),
-                        "contribution": float(importances[i])
+                        "contribution": float(transaction_shap[i])
                     }
                     for i in top_indices
                 ]
+                logger.info(f"SHAP top features: {top_features}")
+
+            # Fallback to global feature importance if SHAP not available
+            elif hasattr(model, 'feature_importances_'):
+                importances = model.feature_importances_
+
+                # Get top 3 most important features globally
+                top_indices = np.argsort(importances)[-3:][::-1]
+
+                # Multiply by feature values to get direction
+                for i in top_indices:
+                    feature_value = features[0][i]
+                    contribution = float(importances[i]) * (1 if feature_value > 0 else -1)
+                    top_features.append({
+                        "feature": friendly_names.get(feature_names[i], feature_names[i]),
+                        "contribution": contribution
+                    })
+                logger.info(f"Feature importance (fallback): {top_features}")
+
         except Exception as e:
-            logger.warning(f"Could not get feature importance: {e}")
+            logger.warning(f"Could not get feature contributions: {e}")
+            # Last resort fallback
             top_features = [
-                {"feature": "Transaction Amount", "contribution": 0.35},
-                {"feature": "New Customer", "contribution": 0.28},
-                {"feature": "Address Mismatch", "contribution": 0.22}
+                {"feature": "Transaction Amount", "contribution": 0.35 if prediction == 1 else -0.35},
+                {"feature": "New Customer", "contribution": 0.28 if transaction.is_new_user else -0.28},
+                {"feature": "Address Mismatch", "contribution": 0.22 if not transaction.billing_shipping_match else -0.22}
             ]
 
         latency_ms = (time.time() - start_time) * 1000
