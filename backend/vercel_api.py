@@ -354,7 +354,11 @@ def encode_categorical(column: str, value: str) -> int:
     return 0
 
 def get_top_features(features: np.ndarray) -> List[dict]:
-    """Get top 3 features with transaction-specific contributions"""
+    """Get top 3 features with transaction-specific contributions
+
+    Args:
+        features: 1D array of feature values for a single transaction
+    """
     if not hasattr(model, 'feature_importances_'):
         return [
             {"feature": "Transaction Amount", "contribution": 0.35},
@@ -392,7 +396,7 @@ def get_top_features(features: np.ndarray) -> List[dict]:
     contributions = []
 
     for idx in range(len(importances)):
-        feature_value = features[0][idx]  # features is shape (1, num_features)
+        feature_value = features[idx]  # features is already 1D array
 
         # Scale feature value to reasonable range for display
         # Use tanh to bound to [-1, 1] range
