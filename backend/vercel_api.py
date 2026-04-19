@@ -241,7 +241,9 @@ async def predict(transaction: Transaction):
         label = "HIGH RISK" if prediction == 1 else "LOW RISK"
 
         # Top features
+        logger.info(f"🔍 About to call get_top_features with features shape: {features.shape}, features[0] shape: {features[0].shape}")
         top_features = get_top_features(features[0])
+        logger.info(f"🔍 get_top_features returned: {top_features}")
 
         latency_ms = (time.time() - start_time) * 1000
 
