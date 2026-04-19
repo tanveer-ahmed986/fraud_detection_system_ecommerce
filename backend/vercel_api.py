@@ -354,7 +354,7 @@ def encode_categorical(column: str, value: str) -> int:
     return 0
 
 def get_top_features(features: np.ndarray) -> List[dict]:
-    """Get top 3 features"""
+    """Get top 3 features with transaction-specific contributions"""
     if not hasattr(model, 'feature_importances_'):
         return [
             {"feature": "Transaction Amount", "contribution": 0.35},
@@ -386,17 +386,30 @@ def get_top_features(features: np.ndarray) -> List[dict]:
         'shipping_method_encoded': 'Shipping Method'
     }
 
-    top_indices = np.argsort(importances)[-3:][::-1]
-    top_features = []
+    # Calculate feature contributions for THIS transaction
+    # contribution = importance × normalized feature value
+    contributions = []
+    for idx in range(len(importances)):
+        feature_value = features[idx]
+        # Normalize feature value to [-1, 1] range
+        # Positive = increases fraud risk, Negative = decreases fraud risk
+        normalized_value = np.tanh(feature_value)  # sigmoid-like normalization
+        contribution = float(importances[idx] * normalized_value)
+        contributions.append((idx, contribution))
 
-    for idx in top_indices:
+    # Get top 3 by absolute contribution
+    top_indices_contrib = sorted(contributions, key=lambda x: abs(x[1]), reverse=True)[:3]
+
+    top_features = []
+    for idx, contrib in top_indices_contrib:
         feature_name = feature_names[idx] if feature_names else f"feature_{idx}"
         display_name = feature_display_names.get(feature_name, feature_name)
         top_features.append({
             "feature": display_name,
-            "contribution": float(importances[idx])
+            "contribution": float(contrib)
         })
 
+    logger.info(f"Top features for transaction: {top_features}")
     return top_features
 
 if __name__ == "__main__":
