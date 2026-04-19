@@ -387,14 +387,19 @@ def get_top_features(features: np.ndarray) -> List[dict]:
     }
 
     # Calculate feature contributions for THIS transaction
-    # contribution = importance × normalized feature value
+    # Simple approach: multiply importance by scaled feature value
+    # This gives transaction-specific contributions (different for each transaction)
     contributions = []
+
     for idx in range(len(importances)):
-        feature_value = features[idx]
-        # Normalize feature value to [-1, 1] range
-        # Positive = increases fraud risk, Negative = decreases fraud risk
-        normalized_value = np.tanh(feature_value)  # sigmoid-like normalization
-        contribution = float(importances[idx] * normalized_value)
+        feature_value = features[0][idx]  # features is shape (1, num_features)
+
+        # Scale feature value to reasonable range for display
+        # Use tanh to bound to [-1, 1] range
+        scaled_value = np.tanh(feature_value / 10.0)  # divide by 10 to avoid saturation
+
+        # Contribution = importance * scaled value
+        contribution = float(importances[idx] * scaled_value)
         contributions.append((idx, contribution))
 
     # Get top 3 by absolute contribution
