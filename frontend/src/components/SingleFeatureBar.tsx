@@ -2,9 +2,10 @@ interface Props {
   feature: string
   contribution: number
   rank: number
+  reason?: string  // Human-readable explanation
 }
 
-export default function SingleFeatureBar({ feature, contribution, rank }: Props) {
+export default function SingleFeatureBar({ feature, contribution, rank, reason }: Props) {
   const maxWidth = 100
   const percentage = Math.min(Math.abs(contribution) * 100, maxWidth)
   const isPositive = contribution > 0
@@ -42,8 +43,8 @@ export default function SingleFeatureBar({ feature, contribution, rank }: Props)
           borderRadius: '4px',
         }} />
       </div>
-      <div style={{ fontSize: '11px', color: '#636e72', marginTop: '4px' }}>
-        {isPositive ? 'Increases fraud risk' : 'Decreases fraud risk'}
+      <div style={{ fontSize: '12px', color: '#2d3436', marginTop: '6px', fontWeight: 500 }}>
+        {reason || (isPositive ? 'Increases fraud risk' : 'Decreases fraud risk')}
       </div>
     </div>
   )

@@ -297,6 +297,7 @@ export default function TestTransaction() {
                       feature={f.feature}
                       contribution={f.contribution}
                       rank={i + 1}
+                      reason={f.reason}
                     />
                   ))}
                 </div>

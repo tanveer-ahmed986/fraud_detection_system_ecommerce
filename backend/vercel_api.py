@@ -355,6 +355,121 @@ def encode_categorical(column: str, value: str) -> int:
             return 0
     return 0
 
+def explain_feature(feature_name: str, feature_value: float, contribution: float) -> str:
+    """Generate human-readable explanation for why a feature affects fraud risk
+
+    Args:
+        feature_name: Name of the feature (e.g., 'is_new_user', 'amount')
+        feature_value: Actual value of the feature
+        contribution: How much it contributes to risk (positive = increases, negative = decreases)
+
+    Returns:
+        Human-readable explanation
+    """
+    is_risky = contribution > 0
+
+    # Map features to explanations based on their values
+    if feature_name == 'is_new_user' and feature_value > 0.5:
+        return "New customer with no purchase history" if is_risky else "Returning customer with verified history"
+
+    elif feature_name == 'email_domain_reputation':
+        if feature_value < 0.3:
+            return "Email from suspicious or unknown domain" if is_risky else "Email domain check passed"
+        elif feature_value > 0.7:
+            return "Trusted email provider" if not is_risky else "Email reputation concern"
+        else:
+            return "Unverified email domain" if is_risky else "Email domain verified"
+
+    elif feature_name == 'amount':
+        if feature_value > 5000:
+            return f"Unusually large transaction amount (${feature_value:,.0f})" if is_risky else f"Large transaction amount verified (${feature_value:,.0f})"
+        elif feature_value > 1000:
+            return f"High transaction amount (${feature_value:,.0f})" if is_risky else f"Normal high-value purchase (${feature_value:,.0f})"
+        else:
+            return "Normal transaction amount" if not is_risky else "Transaction amount concern"
+
+    elif feature_name == 'billing_shipping_match' and feature_value < 0.5:
+        return "Billing and shipping addresses don't match" if is_risky else "Address verification needed"
+
+    elif feature_name == 'ip_country_match' and feature_value < 0.5:
+        return "IP location doesn't match billing country" if is_risky else "Location verification needed"
+
+    elif feature_name == 'user_order_count':
+        if feature_value == 0:
+            return "First-time buyer with no order history" if is_risky else "New customer - first purchase"
+        elif feature_value < 3:
+            return "Limited purchase history" if is_risky else "Returning customer"
+        else:
+            return "Established customer with purchase history" if not is_risky else "Active customer account"
+
+    elif feature_name == 'velocity_24h':
+        if feature_value > 5:
+            return f"Multiple transactions in short time ({int(feature_value)} in 24h)" if is_risky else "High activity pattern detected"
+        elif feature_value > 2:
+            return "Elevated transaction frequency" if is_risky else "Normal activity level"
+        else:
+            return "Normal transaction frequency" if not is_risky else "Low activity pattern"
+
+    elif feature_name == 'account_age_days':
+        if feature_value == 0:
+            return "Brand new account created today" if is_risky else "New account verification"
+        elif feature_value < 7:
+            return f"Very new account ({int(feature_value)} days old)" if is_risky else "Recent account signup"
+        elif feature_value < 30:
+            return "Account less than 1 month old" if is_risky else "Established recent account"
+        else:
+            return "Mature account with history" if not is_risky else "Long-standing account"
+
+    elif feature_name == 'previous_fraud_rate':
+        if feature_value > 0.5:
+            return "High fraud rate in customer history" if is_risky else "Fraud history detected"
+        elif feature_value > 0.2:
+            return "Some fraud indicators in past transactions" if is_risky else "Minor fraud history"
+        else:
+            return "Clean transaction history" if not is_risky else "No previous fraud"
+
+    elif feature_name == 'card_bin_fraud_rate':
+        if feature_value > 0.5:
+            return "Card type frequently used in fraud" if is_risky else "High-risk card BIN detected"
+        elif feature_value > 0.2:
+            return "Card has elevated fraud risk" if is_risky else "Card verification needed"
+        else:
+            return "Card type is low risk" if not is_risky else "Standard card risk level"
+
+    elif feature_name == 'is_night_time' and feature_value > 0.5:
+        return "Transaction at unusual hours (late night/early morning)" if is_risky else "Off-hours transaction"
+
+    elif feature_name == 'is_weekend' and feature_value > 0.5:
+        return "Weekend transaction pattern" if is_risky else "Weekend purchase"
+
+    elif feature_name == 'items_count':
+        if feature_value > 10:
+            return f"Large cart size ({int(feature_value)} items)" if is_risky else "Bulk purchase detected"
+        elif feature_value == 1:
+            return "Single item purchase" if is_risky else "Simple transaction"
+        else:
+            return "Normal cart size" if not is_risky else "Standard item count"
+
+    elif feature_name == 'avg_item_price':
+        if feature_value > 1000:
+            return f"High average item price (${feature_value:,.0f})" if is_risky else "Premium items in cart"
+        elif feature_value < 10:
+            return "Low-value items" if is_risky else "Budget purchases"
+        else:
+            return "Normal item pricing" if not is_risky else "Standard price range"
+
+    # Fallback for unknown features
+    feature_display = {
+        'payment_method_encoded': 'Payment method',
+        'device_type_encoded': 'Device type',
+        'shipping_method_encoded': 'Shipping method',
+        'has_digital_items': 'Digital items',
+        'hour_of_day': 'Transaction timing',
+        'day_of_week': 'Day of week pattern'
+    }.get(feature_name, feature_name.replace('_', ' ').title())
+
+    return f"{feature_display} {'increases' if is_risky else 'decreases'} fraud risk"
+
 def get_top_features(features: np.ndarray) -> List[dict]:
     """Get top 3 features with transaction-specific contributions
 
@@ -363,9 +478,9 @@ def get_top_features(features: np.ndarray) -> List[dict]:
     """
     if not hasattr(model, 'feature_importances_'):
         return [
-            {"feature": "Transaction Amount", "contribution": 0.35},
-            {"feature": "New Customer", "contribution": 0.28},
-            {"feature": "Address Mismatch", "contribution": 0.22}
+            {"feature": "Transaction Amount", "contribution": 0.35, "reason": "High-value transaction requires review"},
+            {"feature": "New Customer", "contribution": 0.28, "reason": "First-time buyer with no history"},
+            {"feature": "Address Mismatch", "contribution": 0.22, "reason": "Billing and shipping addresses differ"}
         ]
 
     importances = model.feature_importances_
@@ -397,7 +512,7 @@ def get_top_features(features: np.ndarray) -> List[dict]:
     # This gives transaction-specific contributions (different for each transaction)
 
     try:
-        logger.info(f"🔧 NEW CODE RUNNING - features shape: {features.shape}, len: {len(features)}")
+        logger.info(f"🔧 Calculating feature explanations - features shape: {features.shape}")
         contributions = []
 
         for idx in range(len(importances)):
@@ -409,21 +524,26 @@ def get_top_features(features: np.ndarray) -> List[dict]:
 
             # Contribution = importance * scaled value
             contribution = float(importances[idx] * scaled_value)
-            contributions.append((idx, contribution))
+            contributions.append((idx, contribution, feature_value))
 
         # Get top 3 by absolute contribution
         top_indices_contrib = sorted(contributions, key=lambda x: abs(x[1]), reverse=True)[:3]
 
         top_features = []
-        for idx, contrib in top_indices_contrib:
+        for idx, contrib, raw_value in top_indices_contrib:
             feature_name = feature_names[idx] if feature_names else f"feature_{idx}"
             display_name = feature_display_names.get(feature_name, feature_name)
+
+            # Generate human-readable explanation
+            reason = explain_feature(feature_name, raw_value, contrib)
+
             top_features.append({
                 "feature": display_name,
-                "contribution": float(contrib)
+                "contribution": float(contrib),
+                "reason": reason
             })
 
-        logger.info(f"✅ Transaction-specific features: {top_features}")
+        logger.info(f"✅ Transaction-specific features with reasons: {top_features}")
         return top_features
 
     except Exception as e:
@@ -441,7 +561,8 @@ def get_top_features(features: np.ndarray) -> List[dict]:
             display_name = feature_display_names.get(feature_name, feature_name)
             top_features.append({
                 "feature": display_name,
-                "contribution": float(importances[idx])
+                "contribution": float(importances[idx]),
+                "reason": "Risk factor analysis"
             })
         return top_features
 

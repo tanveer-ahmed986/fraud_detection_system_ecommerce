@@ -38,7 +38,7 @@ export interface PredictionItem {
   confidence: number
   merchant_id: string
   created_at: string
-  top_features: { feature: string; contribution: number }[]
+  top_features: { feature: string; contribution: number; reason?: string }[]
 }
 
 export interface ModelInfo {
@@ -72,7 +72,7 @@ export interface TransactionDetail {
   threshold_used: number
   model_version: string
   latency_ms: number
-  top_features: { feature: string; contribution: number }[]
+  top_features: { feature: string; contribution: number; reason?: string }[]
   prediction_created_at: string
 }
 
@@ -103,7 +103,7 @@ export interface PredictRequest {
 export interface PredictResponse {
   label: string
   confidence: number
-  top_features: { feature: string; contribution: number }[]
+  top_features: { feature: string; contribution: number; reason?: string }[]
   latency_ms: number
   // Add compatibility fields for TestTransaction page
   transaction_id?: string
