@@ -240,10 +240,11 @@ async def predict(transaction: Transaction):
 
         # Label
         label = "HIGH RISK" if prediction == 1 else "LOW RISK"
+        is_high_risk = (prediction == 1)
 
-        # Top features
-        logger.info(f"🔍 About to call get_top_features with features shape: {features.shape}, features[0] shape: {features[0].shape}")
-        top_features = get_top_features(features[0])
+        # Top features with context-aware explanations
+        logger.info(f"🔍 About to call get_top_features with features shape: {features.shape}, features[0] shape: {features[0].shape}, is_high_risk: {is_high_risk}")
+        top_features = get_top_features(features[0], is_high_risk)
         logger.info(f"🔍 get_top_features returned: {top_features}")
 
         latency_ms = (time.time() - start_time) * 1000
@@ -356,18 +357,20 @@ def encode_categorical(column: str, value: str) -> int:
             return 0
     return 0
 
-def explain_feature(feature_name: str, feature_value: float, contribution: float) -> str:
+def explain_feature(feature_name: str, feature_value: float, contribution: float, is_high_risk: bool) -> str:
     """Generate human-readable explanation for why a feature affects fraud risk
 
     Args:
         feature_name: Name of the feature (e.g., 'is_new_user', 'amount')
         feature_value: Actual value of the feature
         contribution: How much it contributes to risk (positive = increases, negative = decreases)
+        is_high_risk: Whether the overall transaction is HIGH RISK (for context-aware messaging)
 
     Returns:
         Human-readable explanation
     """
     is_risky = contribution > 0
+    is_significant = abs(contribution) > 0.05  # Contributions >5% are significant
 
     # Map features to explanations based on their values
     if feature_name == 'is_new_user' and feature_value > 0.5:
@@ -375,11 +378,23 @@ def explain_feature(feature_name: str, feature_value: float, contribution: float
 
     elif feature_name == 'email_domain_reputation':
         if feature_value < 0.3:
-            return "Email from suspicious or unknown domain" if is_risky else "Email domain check passed"
+            # Low reputation (suspicious)
+            if is_high_risk:
+                return "Email from suspicious or unknown domain"
+            else:
+                return "Email domain requires verification" if is_significant else "Standard email verification"
         elif feature_value > 0.7:
-            return "Trusted email provider" if not is_risky else "Email reputation concern"
+            # High reputation (trusted)
+            if not is_high_risk:
+                return "Trusted email provider (outlook.com, gmail.com, etc.)"
+            else:
+                return "Email provider is reputable but other factors raise concerns"
         else:
-            return "Unverified email domain" if is_risky else "Email domain verified"
+            # Medium reputation
+            if is_high_risk:
+                return "Unverified email domain"
+            else:
+                return "Email from standard provider" if is_significant else "Email verification passed"
 
     elif feature_name == 'amount':
         if feature_value > 5000:
@@ -405,11 +420,23 @@ def explain_feature(feature_name: str, feature_value: float, contribution: float
 
     elif feature_name == 'velocity_24h':
         if feature_value > 5:
-            return f"Multiple transactions in short time ({int(feature_value)} in 24h)" if is_risky else "High activity pattern detected"
+            # Very high velocity
+            if is_high_risk:
+                return f"Multiple transactions in short time ({int(feature_value)} in 24h)"
+            else:
+                return "Active customer with multiple recent purchases"
         elif feature_value > 2:
-            return "Elevated transaction frequency" if is_risky else "Normal activity level"
+            # Medium velocity
+            if is_high_risk:
+                return "Elevated transaction frequency"
+            else:
+                return "Normal shopping activity"
         else:
-            return "Normal transaction frequency" if not is_risky else "Low activity pattern"
+            # Low velocity
+            if is_high_risk:
+                return "Transaction pattern analyzed"
+            else:
+                return "Standard purchase frequency"
 
     elif feature_name == 'account_age_days':
         if feature_value == 0:
@@ -431,11 +458,23 @@ def explain_feature(feature_name: str, feature_value: float, contribution: float
 
     elif feature_name == 'card_bin_fraud_rate':
         if feature_value > 0.5:
-            return "Card type frequently used in fraud" if is_risky else "High-risk card BIN detected"
+            # High fraud rate for this card type
+            if is_high_risk:
+                return "Card type frequently used in fraud"
+            else:
+                return "Card type monitored (extra verification applied)"
         elif feature_value > 0.2:
-            return "Card has elevated fraud risk" if is_risky else "Card verification needed"
+            # Medium fraud rate
+            if is_high_risk:
+                return "Card has elevated fraud risk"
+            else:
+                return "Standard card verification completed"
         else:
-            return "Card type is low risk" if not is_risky else "Standard card risk level"
+            # Low fraud rate
+            if is_high_risk:
+                return "Card type verified (other factors raise concerns)"
+            else:
+                return "Card from trusted issuer"
 
     elif feature_name == 'is_night_time' and feature_value > 0.5:
         return "Transaction at unusual hours (late night/early morning)" if is_risky else "Off-hours transaction"
@@ -471,18 +510,26 @@ def explain_feature(feature_name: str, feature_value: float, contribution: float
 
     return f"{feature_display} {'increases' if is_risky else 'decreases'} fraud risk"
 
-def get_top_features(features: np.ndarray) -> List[dict]:
+def get_top_features(features: np.ndarray, is_high_risk: bool = True) -> List[dict]:
     """Get top 3 features with transaction-specific contributions
 
     Args:
         features: 1D array of feature values for a single transaction
+        is_high_risk: Whether the overall transaction is HIGH RISK (for context-aware explanations)
     """
     if not hasattr(model, 'feature_importances_'):
-        return [
-            {"feature": "Transaction Amount", "contribution": 0.35, "reason": "High-value transaction requires review"},
-            {"feature": "New Customer", "contribution": 0.28, "reason": "First-time buyer with no history"},
-            {"feature": "Address Mismatch", "contribution": 0.22, "reason": "Billing and shipping addresses differ"}
-        ]
+        if is_high_risk:
+            return [
+                {"feature": "Transaction Amount", "contribution": 0.35, "reason": "High-value transaction requires review"},
+                {"feature": "New Customer", "contribution": 0.28, "reason": "First-time buyer with no history"},
+                {"feature": "Address Mismatch", "contribution": 0.22, "reason": "Billing and shipping addresses differ"}
+            ]
+        else:
+            return [
+                {"feature": "Transaction Amount", "contribution": 0.35, "reason": "Standard transaction amount"},
+                {"feature": "Customer Profile", "contribution": 0.28, "reason": "Customer verification completed"},
+                {"feature": "Address Verification", "contribution": 0.22, "reason": "Address information verified"}
+            ]
 
     importances = model.feature_importances_
     feature_display_names = {
@@ -536,7 +583,7 @@ def get_top_features(features: np.ndarray) -> List[dict]:
             display_name = feature_display_names.get(feature_name, feature_name)
 
             # Generate human-readable explanation
-            reason = explain_feature(feature_name, raw_value, contrib)
+            reason = explain_feature(feature_name, raw_value, contrib, is_high_risk)
 
             top_features.append({
                 "feature": display_name,
